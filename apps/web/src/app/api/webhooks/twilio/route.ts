@@ -6,9 +6,10 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   // TODO: Validate Twilio signature
-  // TODO: Parse incoming message
-  // TODO: Route to agent-runner
-  // TODO: Send response back via Twilio
+  // TODO: Parse incoming message (From, Body, MediaUrls)
+  // TODO: Resolve user + conversation via channel_identifiers
+  // TODO: runner.invoke(user.arAgentId, body, { sessionId: conversation.arSessionId, toolContext: { userId, channel: "sms" } })
+  // TODO: Send result.output back via TwiML or Twilio REST API
 
   return NextResponse.json({ status: 'ok' });
 }

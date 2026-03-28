@@ -22,10 +22,11 @@ export async function GET(request: NextRequest) {
  * Handles incoming WhatsApp messages via Cloud API
  */
 export async function POST(request: NextRequest) {
-  // TODO: Validate webhook signature
-  // TODO: Parse incoming message
-  // TODO: Route to agent-runner
-  // TODO: Send response back via WhatsApp Cloud API
+  // TODO: Validate webhook signature (X-Hub-Signature-256)
+  // TODO: Parse incoming message (entry → changes → value → messages)
+  // TODO: Resolve user + conversation via channel_identifiers
+  // TODO: runner.invoke(user.arAgentId, body, { sessionId: conversation.arSessionId, toolContext: { userId, channel: "whatsapp" } })
+  // TODO: Send result.output back via WhatsApp Cloud API (POST graph.facebook.com/.../messages)
 
   return NextResponse.json({ status: 'ok' });
 }
