@@ -1,0 +1,62 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [".env*"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "passThroughEnv": ["DATABASE_URL"]
+    },
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true,
+      "passThroughEnv": [
+        "DATABASE_URL",
+        "SESSION_ENCRYPTION_KEY",
+        "TWILIO_ACCOUNT_SID",
+        "TWILIO_AUTH_TOKEN",
+        "TWILIO_PHONE_NUMBER",
+        "TWILIO_WHATSAPP_NUMBER",
+        "SENDGRID_API_KEY",
+        "SENDGRID_INBOUND_DOMAIN",
+        "OPENAI_API_KEY",
+        "GOOGLE_API_KEY",
+        "AGENT_RUNNER_API_KEY",
+        "BASE_URL",
+        "NEXT_PUBLIC_BASE_URL"
+      ]
+    },
+    "lint": {
+      "dependsOn": ["^build"]
+    },
+    "@lloyd/shared#build": {
+      "dependsOn": ["db:codegen"],
+      "outputs": ["dist/**"],
+      "env": ["DATABASE_URL", "NODE_ENV"]
+    },
+    "db:codegen": {
+      "cache": false,
+      "passThroughEnv": ["DATABASE_URL"]
+    },
+    "web#build": {
+      "dependsOn": ["@lloyd/shared#build"],
+      "outputs": [".next/**", "!.next/cache/**"],
+      "env": [
+        "DATABASE_URL",
+        "SESSION_ENCRYPTION_KEY",
+        "TWILIO_ACCOUNT_SID",
+        "TWILIO_AUTH_TOKEN",
+        "TWILIO_PHONE_NUMBER",
+        "TWILIO_WHATSAPP_NUMBER",
+        "SENDGRID_API_KEY",
+        "OPENAI_API_KEY",
+        "GOOGLE_API_KEY",
+        "AGENT_RUNNER_API_KEY",
+        "NODE_ENV",
+        "BASE_URL",
+        "NEXT_PUBLIC_BASE_URL"
+      ]
+    }
+  }
+}

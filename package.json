@@ -1,0 +1,24 @@
+{
+  "name": "lloyd-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:web": "turbo dev --filter=web",
+    "build": "turbo build",
+    "build:web": "turbo build --filter=web",
+    "lint": "turbo lint",
+    "db:migrate": "tsx scripts/migrations/run.ts latest",
+    "db:migrate:create": "tsx scripts/migrations/create.ts",
+    "db:codegen": "pnpm --filter @lloyd/shared db:codegen"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  }
+}
