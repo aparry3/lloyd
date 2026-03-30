@@ -1,3 +1,59 @@
-// Database client will be initialized here
-// Using Kysely for type-safe SQL queries (same as GymText)
-export {};
+import { Kysely, PostgresDialect, Generated } from 'kysely';
+import pg from 'pg';
+
+// Lloyd's own tables (not agent-runner's ar_* tables)
+// Generated<T> marks columns with DEFAULT — optional on insert
+export interface LloydUserTable {
+  id: Generated<string>;
+  name: string;
+  email: string;
+  phone: string | null;
+  preferred_channel: string;
+  ar_agent_id: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface LloydChannelIdentifierTable {
+  id: Generated<string>;
+  user_id: string;
+  channel: string;
+  identifier: string;
+  verified: Generated<boolean>;
+  created_at: Generated<Date>;
+}
+
+export interface LloydConversationTable {
+  id: Generated<string>;
+  user_id: string;
+  channel: string;
+  ar_session_id: string;
+  started_at: Generated<Date>;
+  last_message_at: Generated<Date>;
+}
+
+export interface Database {
+  lloyd_users: LloydUserTable;
+  lloyd_channel_identifiers: LloydChannelIdentifierTable;
+  lloyd_conversations: LloydConversationTable;
+}
+
+let _db: Kysely<Database> | null = null;
+
+export function getDb(): Kysely<Database> {
+  if (!_db) {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL is not set');
+    }
+    _db = new Kysely<Database>({
+      dialect: new PostgresDialect({
+        pool: new pg.Pool({
+          connectionString: process.env.DATABASE_URL,
+          max: 10,
+          idleTimeoutMillis: 30_000,
+        }),
+      }),
+    });
+  }
+  return _db;
+}

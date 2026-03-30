@@ -31,7 +31,6 @@
       "dependsOn": ["^build"]
     },
     "@lloyd/shared#build": {
-      "dependsOn": ["db:codegen"],
       "outputs": ["dist/**"],
       "env": ["DATABASE_URL", "NODE_ENV"]
     },

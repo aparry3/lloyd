@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { resolveUser } from '@/lib/messaging/resolve';
+import {
+  validateWhatsAppSignature,
+  extractWhatsAppMessage,
+  sendWhatsApp,
+} from '@/lib/messaging/whatsapp';
+import { getRunner } from '@/lib/agents/runner';
+import { normalizePhone } from '@lloyd/shared';
 
 /**
  * GET /api/webhooks/whatsapp
- * WhatsApp webhook verification
+ * WhatsApp webhook verification (subscribe handshake).
  */
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -19,14 +27,55 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/webhooks/whatsapp
- * Handles incoming WhatsApp messages via Cloud API
+ * Handles incoming WhatsApp messages via Cloud API.
  */
 export async function POST(request: NextRequest) {
-  // TODO: Validate webhook signature (X-Hub-Signature-256)
-  // TODO: Parse incoming message (entry → changes → value → messages)
-  // TODO: Resolve user + conversation via channel_identifiers
-  // TODO: runner.invoke(user.arAgentId, body, { sessionId: conversation.arSessionId, toolContext: { userId, channel: "whatsapp" } })
-  // TODO: Send result.output back via WhatsApp Cloud API (POST graph.facebook.com/.../messages)
+  try {
+    const rawBody = await request.text();
 
-  return NextResponse.json({ status: 'ok' });
+    // Validate signature in production
+    if (process.env.NODE_ENV === 'production') {
+      const signature = request.headers.get('x-hub-signature-256') || '';
+      if (!validateWhatsAppSignature(rawBody, signature)) {
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
+      }
+    }
+
+    const payload = JSON.parse(rawBody);
+    const message = extractWhatsAppMessage(payload);
+
+    if (!message) {
+      // Not a text message or status update — acknowledge and move on
+      return NextResponse.json({ status: 'ok' });
+    }
+
+    const phone = normalizePhone(message.from);
+    const user = await resolveUser('whatsapp', phone);
+
+    if (!user) {
+      console.log(`[whatsapp] Unknown sender: ${phone}`);
+      return NextResponse.json({ status: 'unknown_sender' });
+    }
+
+    // Invoke the agent
+    const runner = getRunner();
+    const result = await runner.invoke(user.arAgentId, message.body, {
+      sessionId: user.arSessionId,
+      toolContext: {
+        userId: user.userId,
+        userName: user.name,
+        channel: 'whatsapp',
+      },
+    });
+
+    // Reply via WhatsApp Cloud API
+    if (result.output) {
+      await sendWhatsApp(phone, result.output);
+    }
+
+    return NextResponse.json({ status: 'ok' });
+  } catch (error) {
+    console.error('[whatsapp] Webhook error:', error);
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+  }
 }
