@@ -2,6 +2,7 @@ import { createRunner, defineAgent, type Runner } from '@agent-runner/core';
 import { PostgresStore } from '@agent-runner/store-postgres';
 import { saveMemory, recallMemories, updateMemory, forgetMemory, getMemoryContext } from './memory-tools';
 import { webSearch, getCurrentTime, calculate } from './utility-tools';
+import { setReminder, listReminders, cancelReminder } from './reminder-tools';
 
 let _runner: Runner | null = null;
 let _store: PostgresStore | null = null;
@@ -14,11 +15,21 @@ You have tools! Use them:
 - **web_search**: look things up when you need current info, facts, prices, hours, events
 - **calculate**: do math, tip splits, conversions — don't do arithmetic in your head
 - **get_current_time**: check the current date/time when relevant
+- **set_reminder**: set a reminder for a specific time. Always call get_current_time first so you know "now", then compute the ISO 8601 datetime.
+- **list_reminders** / **cancel_reminder**: manage existing reminders
 
 You can also help with:
 - Writing and editing text
 - Brainstorming and planning
 - General knowledge questions
+
+## Reminders
+When users say "remind me to..." or "set a reminder for...":
+1. Call get_current_time to know the current date/time
+2. Parse their request into a specific datetime
+3. Call set_reminder with the ISO 8601 datetime
+4. Confirm with the date/time in human-readable format
+For relative times ("in 2 hours", "tomorrow morning"), calculate the actual datetime. "Morning" = 9am, "afternoon" = 2pm, "evening" = 6pm unless they specify.
 
 ## Memory
 You have tools to save and recall facts about the user. Use them proactively:
@@ -51,7 +62,7 @@ export function getRunner(): Runner {
 
     _runner = createRunner({
       store: _store,
-      tools: [saveMemory, recallMemories, updateMemory, forgetMemory, webSearch, getCurrentTime, calculate],
+      tools: [saveMemory, recallMemories, updateMemory, forgetMemory, webSearch, getCurrentTime, calculate, setReminder, listReminders, cancelReminder],
       session: {
         maxMessages: 40,
         strategy: 'summary',
@@ -76,6 +87,9 @@ export function getRunner(): Runner {
           { type: 'inline', name: 'web_search' },
           { type: 'inline', name: 'get_current_time' },
           { type: 'inline', name: 'calculate' },
+          { type: 'inline', name: 'set_reminder' },
+          { type: 'inline', name: 'list_reminders' },
+          { type: 'inline', name: 'cancel_reminder' },
         ],
       })
     );

@@ -42,11 +42,24 @@ export interface LloydUserMemoryTable {
   updated_at: Generated<Date>;
 }
 
+export interface LloydReminderTable {
+  id: Generated<string>;
+  user_id: string;
+  content: string;
+  scheduled_at: Date;
+  timezone: Generated<string>;
+  channel: string | null;
+  status: Generated<string>;
+  sent_at: Date | null;
+  created_at: Generated<Date>;
+}
+
 export interface Database {
   lloyd_users: LloydUserTable;
   lloyd_channel_identifiers: LloydChannelIdentifierTable;
   lloyd_conversations: LloydConversationTable;
   lloyd_user_memories: LloydUserMemoryTable;
+  lloyd_reminders: LloydReminderTable;
 }
 
 let _db: Kysely<Database> | null = null;
