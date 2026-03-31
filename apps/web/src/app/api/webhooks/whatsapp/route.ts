@@ -5,7 +5,7 @@ import {
   extractWhatsAppMessage,
   sendWhatsApp,
 } from '@/lib/messaging/whatsapp';
-import { getRunner } from '@/lib/agents/runner';
+import { getRunner, getMemoryContext } from '@/lib/agents/runner';
 import { normalizePhone } from '@lloyd/shared';
 
 /**
@@ -57,6 +57,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'unknown_sender' });
     }
 
+    // Fetch user memory context
+    const memoryCtx = await getMemoryContext(user.userId);
+
     // Invoke the agent
     const runner = getRunner();
     const result = await runner.invoke(user.arAgentId, message.body, {
@@ -66,6 +69,7 @@ export async function POST(request: NextRequest) {
         userName: user.name,
         channel: 'whatsapp',
       },
+      ...(memoryCtx ? { extraContext: memoryCtx } : {}),
     });
 
     // Reply via WhatsApp Cloud API
