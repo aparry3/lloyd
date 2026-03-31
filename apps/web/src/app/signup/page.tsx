@@ -1,34 +1,106 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type KeyboardEvent } from 'react';
 import Link from 'next/link';
+
+const LLOYD_PHONE = '+1 (855) 699-5176';
+
+function EmailTag({ email, onRemove }: { email: string; onRemove: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 rounded-lg px-2.5 py-1 text-sm">
+      {email}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="text-blue-400 hover:text-blue-600 ml-0.5"
+        aria-label={`Remove ${email}`}
+      >
+        ×
+      </button>
+    </span>
+  );
+}
 
 export default function SignupPage() {
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [additionalEmails, setAdditionalEmails] = useState('');
+  const [emails, setEmails] = useState<string[]>([]);
+  const [emailInput, setEmailInput] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
 
+  function addEmail(raw: string) {
+    const email = raw.trim().toLowerCase();
+    if (email && email.includes('@') && !emails.includes(email)) {
+      setEmails((prev) => [...prev, email]);
+    }
+    setEmailInput('');
+  }
+
+  function handleEmailKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' || e.key === ',' || e.key === 'Tab') {
+      e.preventDefault();
+      addEmail(emailInput);
+    }
+    // Remove last email on backspace when input is empty
+    if (e.key === 'Backspace' && !emailInput && emails.length > 0) {
+      setEmails((prev) => prev.slice(0, -1));
+    }
+  }
+
+  function handleEmailBlur() {
+    if (emailInput.trim()) {
+      addEmail(emailInput);
+    }
+  }
+
+  function handleEmailPaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text');
+    const parts = pasted.split(/[,;\n\s]+/).filter(Boolean);
+    const newEmails = parts
+      .map((p) => p.trim().toLowerCase())
+      .filter((p) => p.includes('@') && !emails.includes(p));
+    if (newEmails.length > 0) {
+      setEmails((prev) => [...prev, ...newEmails]);
+    }
+    setEmailInput('');
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+
+    // Add any pending input as an email
+    let allEmails = [...emails];
+    if (emailInput.trim()) {
+      const pending = emailInput.trim().toLowerCase();
+      if (pending.includes('@') && !allEmails.includes(pending)) {
+        allEmails = [...allEmails, pending];
+        setEmails(allEmails);
+      }
+      setEmailInput('');
+    }
+
+    if (allEmails.length === 0) {
+      setStatus('error');
+      setMessage('Please add at least one email address');
+      return;
+    }
+
     setStatus('loading');
 
     try {
-      const extras = additionalEmails
-        .split(/[,\n]/)
-        .map((e) => e.trim())
-        .filter(Boolean);
+      // First email is the primary, rest are additional
+      const [primaryEmail, ...additionalEmails] = allEmails;
 
       const res = await fetch('/api/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
-          email,
+          email: primaryEmail,
           phone: phone || undefined,
-          additionalEmails: extras.length > 0 ? extras : undefined,
+          additionalEmails: additionalEmails.length > 0 ? additionalEmails : undefined,
         }),
       });
 
@@ -60,14 +132,28 @@ export default function SignupPage() {
             <h3 className="font-semibold text-sm text-gray-700">What&apos;s next?</h3>
             <div className="flex items-start gap-3">
               <span className="text-blue-600 mt-0.5">💬</span>
-              <p className="text-sm text-gray-600">
-                <strong>Text Lloyd</strong> at your Lloyd number to start chatting
-              </p>
+              <div className="text-sm text-gray-600">
+                <p>
+                  <strong>Text Lloyd</strong> at{' '}
+                  <a
+                    href={`sms:${LLOYD_PHONE.replace(/[^\d+]/g, '')}`}
+                    className="text-blue-600 font-semibold hover:underline"
+                  >
+                    {LLOYD_PHONE}
+                  </a>
+                </p>
+              </div>
             </div>
             <div className="flex items-start gap-3">
               <span className="text-blue-600 mt-0.5">📧</span>
               <p className="text-sm text-gray-600">
-                <strong>Email</strong> lloyd@heylloyd.co with any question
+                <strong>Email</strong>{' '}
+                <a
+                  href="mailto:lloyd@heylloyd.co"
+                  className="text-blue-600 font-semibold hover:underline"
+                >
+                  lloyd@heylloyd.co
+                </a>
               </p>
             </div>
           </div>
@@ -116,21 +202,6 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
-                placeholder="you@example.com"
-              />
-            </div>
-
-            <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1.5">
                 Phone <span className="text-gray-300 font-normal">— for SMS</span>
               </label>
@@ -145,22 +216,33 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label
-                htmlFor="additionalEmails"
-                className="block text-sm font-medium text-gray-700 mb-1.5"
-              >
-                Forwarding emails <span className="text-gray-300 font-normal">— optional</span>
+              <label htmlFor="emailInput" className="block text-sm font-medium text-gray-700 mb-1.5">
+                Email addresses
               </label>
-              <textarea
-                id="additionalEmails"
-                value={additionalEmails}
-                onChange={(e) => setAdditionalEmails(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow resize-none"
-                placeholder="work@company.com, personal@gmail.com"
-                rows={2}
-              />
+              <div className="rounded-xl border border-gray-200 px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-shadow min-h-[48px]">
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  {emails.map((email) => (
+                    <EmailTag
+                      key={email}
+                      email={email}
+                      onRemove={() => setEmails((prev) => prev.filter((e) => e !== email))}
+                    />
+                  ))}
+                  <input
+                    id="emailInput"
+                    type="text"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    onKeyDown={handleEmailKeyDown}
+                    onBlur={handleEmailBlur}
+                    onPaste={handleEmailPaste}
+                    className="flex-1 min-w-[150px] py-1.5 text-sm focus:outline-none bg-transparent"
+                    placeholder={emails.length === 0 ? 'you@example.com' : 'Add another...'}
+                  />
+                </div>
+              </div>
               <p className="text-xs text-gray-400 mt-1.5">
-                Extra emails you&apos;ll forward to Lloyd. Separate with commas.
+                Add all emails you&apos;ll use with Lloyd. Press Enter or comma to add.
               </p>
             </div>
 
