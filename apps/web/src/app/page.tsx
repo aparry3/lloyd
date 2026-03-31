@@ -206,7 +206,12 @@ export default function Home() {
             </div>
             <span>Lloyd</span>
           </div>
-          <p>© {new Date().getFullYear()} Lloyd. Built with care.</p>
+          <div className="flex items-center gap-4">
+            <Link href="/me" className="hover:text-gray-600 transition-colors">
+              My Account
+            </Link>
+            <p>© {new Date().getFullYear()} Lloyd. Built with care.</p>
+          </div>
         </div>
       </footer>
     </main>
