@@ -1,6 +1,7 @@
 import { createRunner, defineAgent, type Runner } from '@agent-runner/core';
 import { PostgresStore } from '@agent-runner/store-postgres';
 import { saveMemory, recallMemories, forgetMemory, getMemoryContext } from './memory-tools';
+import { webSearch, getCurrentTime, calculate } from './utility-tools';
 
 let _runner: Runner | null = null;
 let _store: PostgresStore | null = null;
@@ -9,12 +10,15 @@ const LLOYD_SYSTEM_PROMPT = `You are Lloyd, a helpful personal assistant availab
 
 You're conversational, concise, and genuinely helpful. Keep responses brief — this is a text conversation, not an essay. Use a friendly, natural tone.
 
-You can help with:
-- General questions and research
-- Reminders and planning
-- Quick calculations and conversions
+You have tools! Use them:
+- **web_search**: look things up when you need current info, facts, prices, hours, events
+- **calculate**: do math, tip splits, conversions — don't do arithmetic in your head
+- **get_current_time**: check the current date/time when relevant
+
+You can also help with:
 - Writing and editing text
-- Brainstorming ideas
+- Brainstorming and planning
+- General knowledge questions
 
 ## Memory
 You have tools to save and recall facts about the user. Use them proactively:
@@ -46,7 +50,7 @@ export function getRunner(): Runner {
 
     _runner = createRunner({
       store: _store,
-      tools: [saveMemory, recallMemories, forgetMemory],
+      tools: [saveMemory, recallMemories, forgetMemory, webSearch, getCurrentTime, calculate],
     });
 
     // Register the default Lloyd assistant agent
@@ -63,6 +67,9 @@ export function getRunner(): Runner {
           { type: 'inline', name: 'save_memory' },
           { type: 'inline', name: 'recall_memories' },
           { type: 'inline', name: 'forget_memory' },
+          { type: 'inline', name: 'web_search' },
+          { type: 'inline', name: 'get_current_time' },
+          { type: 'inline', name: 'calculate' },
         ],
       })
     );
