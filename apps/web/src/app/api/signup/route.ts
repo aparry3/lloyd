@@ -3,6 +3,7 @@ import { getDb } from '@lloyd/shared/server';
 import { normalizePhone } from '@lloyd/shared';
 import { randomUUID } from 'crypto';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { sendWelcomeMessage } from '@/lib/messaging/welcome';
 
 /**
  * POST /api/signup
@@ -107,6 +108,14 @@ export async function POST(request: NextRequest) {
         .values(identifiers)
         .execute();
     }
+
+    // Send welcome message (best-effort, don't block response)
+    sendWelcomeMessage({
+      name,
+      phone: normalizedPhone,
+      email: email.toLowerCase(),
+      preferredChannel: normalizedPhone ? 'sms' : 'email',
+    }).catch((err) => console.error('[signup] Welcome message failed:', err));
 
     return NextResponse.json({
       success: true,
