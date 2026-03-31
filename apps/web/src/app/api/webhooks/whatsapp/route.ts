@@ -7,6 +7,7 @@ import {
 } from '@/lib/messaging/whatsapp';
 import { getRunner, getMemoryContext } from '@/lib/agents/runner';
 import { normalizePhone } from '@lloyd/shared';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 /**
  * GET /api/webhooks/whatsapp
@@ -50,10 +51,19 @@ export async function POST(request: NextRequest) {
     }
 
     const phone = normalizePhone(message.from);
+
+    // Rate limit: 10 messages per minute per phone
+    const rl = checkRateLimit(`wa:${phone}`, 10, 60_000);
+    if (!rl.allowed) {
+      await sendWhatsApp(phone, "You're sending messages too quickly. Please wait a moment and try again.");
+      return NextResponse.json({ error: 'Rate limited' }, { status: 429 });
+    }
+
     const user = await resolveUser('whatsapp', phone);
 
     if (!user) {
       console.log(`[whatsapp] Unknown sender: ${phone}`);
+      await sendWhatsApp(phone, "Hey! I don't recognize this number. Sign up at heylloyd.co to get started.");
       return NextResponse.json({ status: 'unknown_sender' });
     }
 
@@ -80,6 +90,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'ok' });
   } catch (error) {
     console.error('[whatsapp] Webhook error:', error);
+    // WhatsApp doesn't easily let us send error replies without the phone parsed,
+    // so just log and return 500
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

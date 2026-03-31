@@ -3,6 +3,7 @@ import { resolveUser } from '@/lib/messaging/resolve';
 import { validateTwilioSignature, parseTwilioBody, sendSms } from '@/lib/messaging/twilio';
 import { getRunner, getMemoryContext } from '@/lib/agents/runner';
 import { normalizePhone } from '@lloyd/shared';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 /** Split a long message into SMS-friendly segments (~1500 chars, break at sentence boundaries) */
 function splitMessage(text: string, maxLen = 1500): string[] {
@@ -17,11 +18,9 @@ function splitMessage(text: string, maxLen = 1500): string[] {
       break;
     }
 
-    // Find a good break point (sentence end, then newline, then space)
     let breakAt = -1;
     const searchWindow = remaining.slice(0, maxLen);
 
-    // Prefer breaking at sentence boundaries
     for (const sep of ['. ', '.\n', '! ', '!\n', '? ', '?\n']) {
       const idx = searchWindow.lastIndexOf(sep);
       if (idx > maxLen * 0.3) {
@@ -30,19 +29,16 @@ function splitMessage(text: string, maxLen = 1500): string[] {
       }
     }
 
-    // Fall back to newline
     if (breakAt === -1) {
       const nlIdx = searchWindow.lastIndexOf('\n');
       if (nlIdx > maxLen * 0.3) breakAt = nlIdx + 1;
     }
 
-    // Fall back to space
     if (breakAt === -1) {
       const spIdx = searchWindow.lastIndexOf(' ');
       if (spIdx > maxLen * 0.3) breakAt = spIdx + 1;
     }
 
-    // Hard break as last resort
     if (breakAt === -1) breakAt = maxLen;
 
     segments.push(remaining.slice(0, breakAt).trimEnd());
@@ -57,6 +53,8 @@ function splitMessage(text: string, maxLen = 1500): string[] {
  * Handles incoming SMS/RCS messages from Twilio.
  */
 export async function POST(request: NextRequest) {
+  let from = '';
+
   try {
     const formData = await request.formData();
     const params = parseTwilioBody(formData);
@@ -70,24 +68,32 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const from = normalizePhone(params.From || '');
+    from = normalizePhone(params.From || '');
     const body = params.Body || '';
 
     if (!from || !body) {
       return NextResponse.json({ error: 'Missing From or Body' }, { status: 400 });
     }
 
+    // Rate limit: 10 messages per minute per phone number
+    const rl = checkRateLimit(`sms:${from}`, 10, 60_000);
+    if (!rl.allowed) {
+      await sendSms(from, "You're sending messages too quickly. Please wait a moment and try again.");
+      return NextResponse.json({ error: 'Rate limited' }, { status: 429 });
+    }
+
     // Resolve the sender to a user
     const user = await resolveUser('sms', from);
     if (!user) {
       console.log(`[twilio] Unknown sender: ${from}`);
+      await sendSms(from, "Hey! I don't recognize this number yet. Sign up at heylloyd.co to get started.");
       return NextResponse.json({ status: 'unknown_sender' });
     }
 
     // Fetch user memory context
     const memoryCtx = await getMemoryContext(user.userId);
 
-    // Invoke the agent with memory context appended
+    // Invoke the agent with memory context
     const runner = getRunner();
     const result = await runner.invoke(user.arAgentId, body, {
       sessionId: user.arSessionId,
@@ -110,6 +116,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'ok' });
   } catch (error) {
     console.error('[twilio] Webhook error:', error);
+
+    // Send a user-friendly error message if we have the sender's number
+    if (from) {
+      try {
+        await sendSms(from, "Sorry, I hit a snag processing your message. Please try again in a moment.");
+      } catch {
+        // Don't let the error reply itself fail the response
+      }
+    }
+
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

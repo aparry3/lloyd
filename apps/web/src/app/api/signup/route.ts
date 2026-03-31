@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@lloyd/shared/server';
 import { normalizePhone } from '@lloyd/shared';
 import { randomUUID } from 'crypto';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 /**
  * POST /api/signup
@@ -21,6 +22,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Name and email are required' },
         { status: 400 }
+      );
+    }
+
+    // Rate limit: 5 signups per IP per hour
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const rl = checkRateLimit(`signup:${ip}`, 5, 3600_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'Too many signups. Please try again later.' },
+        { status: 429 }
       );
     }
 
