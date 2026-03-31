@@ -29,7 +29,8 @@ async function main() {
   const appliedSet = new Set(applied.map((r: any) => r.name));
 
   // Read migration files
-  const migrationsDir = path.resolve(import.meta.dirname, '..', 'migrations');
+  const __dirname = import.meta.dirname ?? path.dirname(new URL(import.meta.url).pathname);
+  const migrationsDir = path.resolve(__dirname, '..', 'migrations');
   const files = fs.readdirSync(migrationsDir)
     .filter((f) => f.endsWith('.sql'))
     .sort();
