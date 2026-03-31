@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
         userName: user.name,
         channel: 'sms',
       },
-      ...(memoryCtx ? { extraContext: memoryCtx } : {}),
+      extraContext: `[Channel: SMS]${memoryCtx || ''}`,
     });
 
     // Send the response back via SMS (split long messages)

@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         userName: user.name,
         channel: 'email',
       },
-      ...(memoryCtx ? { extraContext: memoryCtx } : {}),
+      extraContext: `[Channel: Email]${memoryCtx || ''}`,
     });
 
     // Reply via SendGrid

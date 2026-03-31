@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
         userName: user.name,
         channel: 'whatsapp',
       },
-      ...(memoryCtx ? { extraContext: memoryCtx } : {}),
+      extraContext: `[Channel: WhatsApp]${memoryCtx || ''}`,
     });
 
     // Reply via WhatsApp Cloud API

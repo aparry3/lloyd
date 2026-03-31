@@ -7,12 +7,23 @@ export interface ResolvedUser {
   userId: string;
   name: string;
   arAgentId: string;
+  /** Unified session ID shared across all channels for this user */
   arSessionId: string;
   conversationId: string;
+  channel: Channel;
+}
+
+/**
+ * Generates a stable, unified session ID for a user.
+ * All channels share the same session so Lloyd has cross-channel context.
+ */
+function unifiedSessionId(userId: string): string {
+  return `lloyd_user_${userId}`;
 }
 
 /**
  * Resolves an incoming message sender to a Lloyd user and conversation.
+ * Uses a unified session per user (cross-channel context).
  * If no user/conversation exists, returns null (unknown sender).
  */
 export async function resolveUser(
@@ -36,7 +47,11 @@ export async function resolveUser(
 
   if (!ci) return null;
 
-  // Find or create a conversation for this user + channel
+  // Unified session ID — same across all channels for this user
+  const arSessionId = unifiedSessionId(ci.userId);
+
+  // Find or create a conversation record for this user + channel
+  // (Conversations track per-channel metadata; the ar_session_id is shared)
   let conversation = await db
     .selectFrom('lloyd_conversations')
     .select(['id', 'ar_session_id'])
@@ -47,7 +62,6 @@ export async function resolveUser(
 
   if (!conversation) {
     const newId = randomUUID();
-    const arSessionId = `lloyd_${ci.userId}_${channel}_${Date.now()}`;
 
     await db
       .insertInto('lloyd_conversations')
@@ -61,10 +75,15 @@ export async function resolveUser(
 
     conversation = { id: newId, ar_session_id: arSessionId };
   } else {
-    // Update last_message_at
+    // Migrate old per-channel sessions to unified session + update timestamp
+    const updates: Record<string, any> = { last_message_at: new Date() };
+    if (conversation.ar_session_id !== arSessionId) {
+      updates.ar_session_id = arSessionId;
+    }
+
     await db
       .updateTable('lloyd_conversations')
-      .set({ last_message_at: new Date() })
+      .set(updates)
       .where('id', '=', conversation.id)
       .execute();
   }
@@ -73,7 +92,8 @@ export async function resolveUser(
     userId: ci.userId,
     name: ci.name,
     arAgentId: ci.arAgentId,
-    arSessionId: conversation.ar_session_id,
+    arSessionId,
     conversationId: conversation.id,
+    channel,
   };
 }
