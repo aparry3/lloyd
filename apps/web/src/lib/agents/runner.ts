@@ -52,6 +52,10 @@ export function getRunner(): Runner {
     _runner = createRunner({
       store: _store,
       tools: [saveMemory, recallMemories, updateMemory, forgetMemory, webSearch, getCurrentTime, calculate],
+      session: {
+        maxMessages: 40,
+        strategy: 'summary',
+      },
     });
 
     // Register the default Lloyd assistant agent
