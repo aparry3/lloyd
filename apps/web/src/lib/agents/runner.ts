@@ -1,6 +1,6 @@
 import { createRunner, defineAgent, type Runner } from '@agent-runner/core';
 import { PostgresStore } from '@agent-runner/store-postgres';
-import { saveMemory, recallMemories, forgetMemory, getMemoryContext } from './memory-tools';
+import { saveMemory, recallMemories, updateMemory, forgetMemory, getMemoryContext } from './memory-tools';
 import { webSearch, getCurrentTime, calculate } from './utility-tools';
 
 let _runner: Runner | null = null;
@@ -23,6 +23,7 @@ You can also help with:
 ## Memory
 You have tools to save and recall facts about the user. Use them proactively:
 - When someone mentions their name, job, preferences, important dates, or anything personal → save it
+- When they correct or update something (new job, moved cities, changed preference) → use update_memory instead of saving a duplicate
 - When context would help your answer → recall what you know
 - When they ask "do you remember" → recall and answer
 - Don't announce that you're saving memories — just do it naturally
@@ -50,7 +51,7 @@ export function getRunner(): Runner {
 
     _runner = createRunner({
       store: _store,
-      tools: [saveMemory, recallMemories, forgetMemory, webSearch, getCurrentTime, calculate],
+      tools: [saveMemory, recallMemories, updateMemory, forgetMemory, webSearch, getCurrentTime, calculate],
     });
 
     // Register the default Lloyd assistant agent
@@ -66,6 +67,7 @@ export function getRunner(): Runner {
         tools: [
           { type: 'inline', name: 'save_memory' },
           { type: 'inline', name: 'recall_memories' },
+          { type: 'inline', name: 'update_memory' },
           { type: 'inline', name: 'forget_memory' },
           { type: 'inline', name: 'web_search' },
           { type: 'inline', name: 'get_current_time' },

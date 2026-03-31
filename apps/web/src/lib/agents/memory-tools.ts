@@ -29,6 +29,25 @@ const recallMemoriesInput = z.object({
     .describe('Maximum number of memories to return'),
 });
 
+const updateMemoryInput = z.object({
+  searchContent: z
+    .string()
+    .describe('Partial match to find the existing memory to update'),
+  newContent: z
+    .string()
+    .describe('The updated content to replace the old memory with'),
+  category: z
+    .enum(['preference', 'fact', 'reminder', 'general'])
+    .optional()
+    .describe('Optionally change the category'),
+  importance: z
+    .number()
+    .min(1)
+    .max(10)
+    .optional()
+    .describe('Optionally change the importance'),
+});
+
 const forgetMemoryInput = z.object({
   content: z
     .string()
@@ -91,6 +110,51 @@ export const recallMemories = defineTool({
 
     const memories = await query.execute();
     return { memories };
+  },
+});
+
+/**
+ * Tool: update an existing memory (avoids duplicates).
+ */
+export const updateMemory = defineTool({
+  name: 'update_memory',
+  description:
+    'Update an existing saved memory. Use this instead of save_memory when the user corrects or updates something you already know (e.g., they changed jobs, moved cities, updated a preference). Finds the old memory by partial match and replaces its content.',
+  input: updateMemoryInput as z.ZodSchema,
+  async execute(input: unknown, ctx) {
+    const { searchContent, newContent, category, importance } = input as z.infer<typeof updateMemoryInput>;
+    const userId = (ctx as any).userId;
+    if (!userId) return { error: 'No user context' };
+
+    const db = getDb();
+
+    // Find the matching memory
+    const existing = await db
+      .selectFrom('lloyd_user_memories')
+      .select(['id', 'content'])
+      .where('user_id', '=', userId)
+      .where('content', 'ilike', `%${searchContent}%`)
+      .orderBy('updated_at', 'desc')
+      .executeTakeFirst();
+
+    if (!existing) {
+      return { updated: false, reason: 'No matching memory found. Use save_memory to create a new one.' };
+    }
+
+    const updateValues: Record<string, unknown> = {
+      content: newContent,
+      updated_at: new Date(),
+    };
+    if (category) updateValues.category = category;
+    if (importance) updateValues.importance = importance;
+
+    await db
+      .updateTable('lloyd_user_memories')
+      .set(updateValues)
+      .where('id', '=', existing.id)
+      .execute();
+
+    return { updated: true, old: existing.content, new: newContent };
   },
 });
 
