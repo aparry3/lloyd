@@ -12,16 +12,25 @@ import { sendWelcomeMessage } from '@/lib/messaging/welcome';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email, phone, additionalEmails } = body as {
+    const { name, email, phone, additionalEmails, smsConsent } = body as {
       name: string;
       email: string;
       phone?: string;
       additionalEmails?: string[];
+      smsConsent?: boolean;
     };
 
     if (!name || !email) {
       return NextResponse.json(
         { error: 'Name and email are required' },
+        { status: 400 }
+      );
+    }
+
+    // Require explicit SMS consent when a phone number is provided (10DLC compliance)
+    if (phone && !smsConsent) {
+      return NextResponse.json(
+        { error: 'SMS consent is required when providing a phone number' },
         { status: 400 }
       );
     }

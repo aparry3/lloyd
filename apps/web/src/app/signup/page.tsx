@@ -26,6 +26,7 @@ export default function SignupPage() {
   const [phone, setPhone] = useState('');
   const [emails, setEmails] = useState<string[]>([]);
   const [emailInput, setEmailInput] = useState('');
+  const [smsConsent, setSmsConsent] = useState(false);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
 
@@ -101,6 +102,7 @@ export default function SignupPage() {
           email: primaryEmail,
           phone: phone || undefined,
           additionalEmails: additionalEmails.length > 0 ? additionalEmails : undefined,
+          smsConsent: phone ? smsConsent : undefined,
         }),
       });
 
@@ -246,9 +248,40 @@ export default function SignupPage() {
               </p>
             </div>
 
+            {/* SMS Consent (shown when phone is provided) */}
+            {phone.trim() && (
+              <div className="space-y-3">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={smsConsent}
+                    onChange={(e) => setSmsConsent(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-xs text-gray-600 leading-relaxed">
+                    I agree to receive recurring automated SMS/MMS messages from Lloyd at the phone number provided.
+                    Message frequency varies. Msg &amp; data rates may apply. Consent is not a condition of purchase.
+                    Reply <strong>STOP</strong> to opt out, <strong>HELP</strong> for help.
+                  </span>
+                </label>
+              </div>
+            )}
+
+            {/* Terms & Privacy agreement */}
+            <p className="text-xs text-gray-400 text-center">
+              By signing up, you agree to our{' '}
+              <Link href="/terms" className="text-blue-600 hover:underline" target="_blank">
+                Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link href="/privacy" className="text-blue-600 hover:underline" target="_blank">
+                Privacy Policy
+              </Link>.
+            </p>
+
             <button
               type="submit"
-              disabled={status === 'loading'}
+              disabled={status === 'loading' || (!!phone.trim() && !smsConsent)}
               className="w-full rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-lg shadow-blue-600/20"
             >
               {status === 'loading' ? (
@@ -273,7 +306,8 @@ export default function SignupPage() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          By signing up, you agree to receive messages from Lloyd.
+          Text <strong>STOP</strong> to cancel SMS at any time. Text <strong>HELP</strong> for help.
+          Msg &amp; data rates may apply. Message frequency varies.
         </p>
       </div>
     </main>
