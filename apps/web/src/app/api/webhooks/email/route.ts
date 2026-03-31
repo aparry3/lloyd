@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/messaging/resolve';
 import { parseInboundEmail, sendEmail } from '@/lib/messaging/email';
-import { getRunner } from '@/lib/agents/runner';
+import { getRunner, getMemoryContext } from '@/lib/agents/runner';
 
 /**
  * POST /api/webhooks/email
@@ -24,6 +24,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'unknown_sender' });
     }
 
+    // Fetch user memory context
+    const memoryCtx = await getMemoryContext(user.userId);
+
     // Invoke the agent — include subject for context
     const runner = getRunner();
     const messageText = email.subject
@@ -37,6 +40,7 @@ export async function POST(request: NextRequest) {
         userName: user.name,
         channel: 'email',
       },
+      ...(memoryCtx ? { extraContext: memoryCtx } : {}),
     });
 
     // Reply via SendGrid

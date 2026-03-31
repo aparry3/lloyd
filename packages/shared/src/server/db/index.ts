@@ -32,10 +32,21 @@ export interface LloydConversationTable {
   last_message_at: Generated<Date>;
 }
 
+export interface LloydUserMemoryTable {
+  id: Generated<string>;
+  user_id: string;
+  content: string;
+  category: string;
+  importance: Generated<number>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
 export interface Database {
   lloyd_users: LloydUserTable;
   lloyd_channel_identifiers: LloydChannelIdentifierTable;
   lloyd_conversations: LloydConversationTable;
+  lloyd_user_memories: LloydUserMemoryTable;
 }
 
 let _db: Kysely<Database> | null = null;
