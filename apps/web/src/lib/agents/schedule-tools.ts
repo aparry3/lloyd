@@ -107,17 +107,45 @@ function buildDateInTimezone(
   hours: number, minutes: number,
   timezone: string
 ): Date {
-  // Create a date string and use the timezone to figure out UTC offset
+  // Strategy: create the datetime as UTC, then calculate the timezone offset
+  // by comparing UTC components with timezone-formatted components.
+  // This avoids the bug where new Date(localString) parses in server timezone.
   const dtStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
-
-  // Estimate: create date as if UTC, then compute the offset
   const asUtc = new Date(dtStr + 'Z');
-  const inTzStr = asUtc.toLocaleString('en-US', { timeZone: timezone });
-  const inTz = new Date(inTzStr);
-  const offsetMs = inTz.getTime() - asUtc.getTime();
 
-  // The actual UTC time for this local time is dtStr minus the offset
-  return new Date(asUtc.getTime() - offsetMs);
+  // Format the UTC timestamp in the target timezone to get its components
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: 'numeric', hour12: false,
+  });
+  const parts = Object.fromEntries(
+    formatter.formatToParts(asUtc).map((p) => [p.type, p.value])
+  );
+
+  const tzHour = parseInt(parts.hour) === 24 ? 0 : parseInt(parts.hour);
+  const tzMinute = parseInt(parts.minute);
+  const tzDay = parseInt(parts.day);
+  const utcDay = asUtc.getUTCDate();
+
+  // Calculate offset in minutes: (timezone wall clock) - (UTC wall clock)
+  let tzTotalMin = tzHour * 60 + tzMinute;
+  let utcTotalMin = asUtc.getUTCHours() * 60 + asUtc.getUTCMinutes();
+
+  // Handle day boundary crossings
+  if (tzDay !== utcDay) {
+    if (tzDay > utcDay || (utcDay > 27 && tzDay === 1)) {
+      tzTotalMin += 1440; // tz is a day ahead
+    } else {
+      utcTotalMin += 1440; // utc is a day ahead
+    }
+  }
+
+  const offsetMinutes = tzTotalMin - utcTotalMin;
+
+  // We want the UTC time for (year-month-day hours:minutes) in the target timezone
+  // UTC = local - offset
+  return new Date(asUtc.getTime() - offsetMinutes * 60_000);
 }
 
 function addDays(

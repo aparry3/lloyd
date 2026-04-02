@@ -42,10 +42,6 @@ export async function GET(request: NextRequest) {
       .limit(50) // Process in batches
       .execute();
 
-    if (dueReminders.length === 0) {
-      return NextResponse.json({ processed: 0 });
-    }
-
     let sent = 0;
     let failed = 0;
 
