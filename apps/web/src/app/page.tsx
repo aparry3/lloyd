@@ -111,15 +111,20 @@ export default function Home() {
             </div>
           </div>
           <div className="p-5 space-y-3">
-            <MessageBubble from="user" text="Hey Lloyd, what's the weather in NYC this weekend?" />
+            <MessageBubble from="user" text="Add milk and eggs to my groceries list" />
             <MessageBubble
               from="lloyd"
-              text="Saturday looks great — 72°F and sunny. Sunday has a 40% chance of afternoon rain. Want me to remind you to bring an umbrella?"
+              text="Added milk and eggs to your groceries list. ✅"
             />
-            <MessageBubble from="user" text="Yeah, remind me Saturday night" />
+            <MessageBubble from="user" text="Send me a daily morning summary at 7am" />
             <MessageBubble
               from="lloyd"
-              text="Done! I'll text you Saturday at 8pm. 🌂"
+              text="Done! I'll send you a personalized morning briefing every day at 7:00 AM with your todos, reminders, and anything you should know. 🌅"
+            />
+            <MessageBubble from="user" text="Remind me to call the dentist tomorrow at 2pm" />
+            <MessageBubble
+              from="lloyd"
+              text="Got it! I'll remind you tomorrow at 2:00 PM. 📞"
             />
           </div>
         </div>
@@ -131,7 +136,7 @@ export default function Home() {
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">
             Why Lloyd?
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
             <FeatureCard
               icon="🧠"
               title="Remembers You"
@@ -143,9 +148,24 @@ export default function Home() {
               description="Text, email, or WhatsApp — use whatever's convenient. Lloyd keeps the conversation going seamlessly across all of them."
             />
             <FeatureCard
+              icon="✅"
+              title="To-Do Lists"
+              description="&quot;Add milk to my groceries list.&quot; Manage categorized to-do lists with priorities, all through natural conversation."
+            />
+            <FeatureCard
+              icon="🔄"
+              title="Smart Schedules"
+              description="Daily morning briefings, weekly planning sessions, monthly reviews — personalized messages generated fresh each time."
+            />
+            <FeatureCard
+              icon="⏰"
+              title="Reminders"
+              description="&quot;Remind me to call mom tomorrow at 3pm.&quot; Set one-off or recurring reminders delivered via text, email, or WhatsApp."
+            />
+            <FeatureCard
               icon="⚡"
               title="Instant Help"
-              description="Research, reminders, brainstorming, quick math — just ask. No apps to download, no logins to remember."
+              description="Research, brainstorming, quick math, writing — just ask. No apps to download, no logins to remember."
             />
           </div>
         </div>
@@ -206,11 +226,17 @@ export default function Home() {
             </div>
             <span>Lloyd</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap justify-center">
             <Link href="/me" className="hover:text-gray-600 transition-colors">
               My Account
             </Link>
-            <p>© {new Date().getFullYear()} Lloyd. Built with care.</p>
+            <Link href="/terms" className="hover:text-gray-600 transition-colors">
+              Terms
+            </Link>
+            <Link href="/privacy" className="hover:text-gray-600 transition-colors">
+              Privacy
+            </Link>
+            <p>© {new Date().getFullYear()} Lloyd</p>
           </div>
         </div>
       </footer>
