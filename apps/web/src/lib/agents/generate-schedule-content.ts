@@ -43,6 +43,17 @@ export async function generateDynamicContent(opts: {
       .limit(10)
       .execute();
 
+    // Fetch active todos for context
+    const todos = await db
+      .selectFrom('lloyd_todos')
+      .select(['content', 'category', 'priority', 'due_date'])
+      .where('user_id', '=', opts.userId)
+      .where('completed', '=', false)
+      .orderBy('priority', 'desc')
+      .orderBy('created_at', 'desc')
+      .limit(20)
+      .execute();
+
     // Fetch user memories
     const memoryCtx = await getMemoryContext(opts.userId);
 
@@ -88,6 +99,17 @@ export async function generateDynamicContent(opts: {
         (s) => `- ${s.description} (${s.frequency} at ${s.time_of_day.substring(0, 5)})`
       );
       contextParts.push(`\nActive recurring schedules:\n${scheduleLines.join('\n')}`);
+    }
+
+    if (todos.length > 0) {
+      const priorityLabel = ['', '⚡ ', '🔴 '];
+      const todoLines = todos.map((t) => {
+        let line = `- ${priorityLabel[t.priority] || ''}${t.content}`;
+        if (t.category !== 'general') line += ` [${t.category}]`;
+        if (t.due_date) line += ` (due: ${t.due_date})`;
+        return line;
+      });
+      contextParts.push(`\nPending to-do items:\n${todoLines.join('\n')}`);
     }
 
     const extraContext = contextParts.join('\n') + (memoryCtx || '');

@@ -73,6 +73,19 @@ export interface LloydRecurringScheduleTable {
   updated_at: Generated<Date>;
 }
 
+export interface LloydTodoTable {
+  id: Generated<string>;
+  user_id: string;
+  content: string;
+  category: Generated<string>;
+  priority: Generated<number>;
+  completed: Generated<boolean>;
+  completed_at: Date | null;
+  due_date: string | null;     // DATE stored as string in Kysely
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
 export interface Database {
   lloyd_users: LloydUserTable;
   lloyd_channel_identifiers: LloydChannelIdentifierTable;
@@ -80,6 +93,7 @@ export interface Database {
   lloyd_user_memories: LloydUserMemoryTable;
   lloyd_reminders: LloydReminderTable;
   lloyd_recurring_schedules: LloydRecurringScheduleTable;
+  lloyd_todos: LloydTodoTable;
 }
 
 let _db: Kysely<Database> | null = null;

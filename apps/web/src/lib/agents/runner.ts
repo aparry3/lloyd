@@ -4,6 +4,7 @@ import { saveMemory, recallMemories, updateMemory, forgetMemory, getMemoryContex
 import { webSearch, getCurrentTime, calculate } from './utility-tools';
 import { setReminder, listReminders, cancelReminder } from './reminder-tools';
 import { setRecurringSchedule, listRecurringSchedules, cancelRecurringSchedule, updateRecurringSchedule } from './schedule-tools';
+import { addTodo, listTodos, completeTodo, removeTodo, clearTodos } from './todo-tools';
 
 let _runner: Runner | null = null;
 let _store: PostgresStore | null = null;
@@ -20,6 +21,8 @@ You have tools! Use them:
 - **list_reminders** / **cancel_reminder**: manage existing one-off reminders
 - **set_recurring_schedule**: create a recurring scheduled message (daily/weekly/monthly). Set dynamic=true for AI-generated content.
 - **list_recurring_schedules** / **cancel_recurring_schedule** / **update_recurring_schedule**: manage recurring schedules
+- **add_todo**: add items to the user's to-do list (supports categories and priorities)
+- **list_todos** / **complete_todo** / **remove_todo** / **clear_todos**: manage their to-do list
 
 You can also help with:
 - Writing and editing text
@@ -50,6 +53,17 @@ When users want repeating/recurring messages ("every day at 6am", "weekly on Mon
 Distinguish one-off ("remind me tomorrow at 9am") from recurring ("every morning at 9am"). Use set_reminder for one-off, set_recurring_schedule for recurring.
 
 Use dynamic=true for personalized content like "daily summary", "morning briefing", "weekly review". Use dynamic=false for simple repeating messages like "take your meds" or "drink water".
+
+## To-Do Lists
+Users can manage to-do lists via conversation. Listen for:
+- "add X to my list" / "todo: X" / "I need to..." → add_todo
+- "what's on my list?" / "show my todos" / "my groceries" → list_todos (with optional category filter)
+- "done with X" / "finished X" / "check off X" → complete_todo
+- "remove X" / "delete X from my list" → remove_todo
+- "clear completed items" / "clean up my list" → clear_todos
+
+Use categories to organize: "add milk to my groceries list" → category: "groceries". If no category is mentioned, use "general".
+Keep responses brief — a quick confirmation is enough. Don't list the entire list after every add unless asked.
 
 ## Memory
 You have tools to save and recall facts about the user. Use them proactively:
@@ -82,7 +96,7 @@ export function getRunner(): Runner {
 
     _runner = createRunner({
       store: _store,
-      tools: [saveMemory, recallMemories, updateMemory, forgetMemory, webSearch, getCurrentTime, calculate, setReminder, listReminders, cancelReminder, setRecurringSchedule, listRecurringSchedules, cancelRecurringSchedule, updateRecurringSchedule],
+      tools: [saveMemory, recallMemories, updateMemory, forgetMemory, webSearch, getCurrentTime, calculate, setReminder, listReminders, cancelReminder, setRecurringSchedule, listRecurringSchedules, cancelRecurringSchedule, updateRecurringSchedule, addTodo, listTodos, completeTodo, removeTodo, clearTodos],
       session: {
         maxMessages: 40,
         strategy: 'summary',
@@ -114,6 +128,11 @@ export function getRunner(): Runner {
           { type: 'inline', name: 'list_recurring_schedules' },
           { type: 'inline', name: 'cancel_recurring_schedule' },
           { type: 'inline', name: 'update_recurring_schedule' },
+          { type: 'inline', name: 'add_todo' },
+          { type: 'inline', name: 'list_todos' },
+          { type: 'inline', name: 'complete_todo' },
+          { type: 'inline', name: 'remove_todo' },
+          { type: 'inline', name: 'clear_todos' },
         ],
       })
     );
