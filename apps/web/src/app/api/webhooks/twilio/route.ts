@@ -75,6 +75,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing From or Body' }, { status: 400 });
     }
 
+    // Handle STOP/HELP keywords (Twilio compliance)
+    const normalized = body.trim().toUpperCase();
+    if (['STOP', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT'].includes(normalized)) {
+      // Twilio auto-handles STOP at platform level, but we acknowledge it
+      // and disable any recurring schedules for this user
+      const user = await resolveUser('sms', from);
+      if (user) {
+        const db = (await import('@lloyd/shared/server')).getDb();
+        await db
+          .updateTable('lloyd_recurring_schedules')
+          .set({ enabled: false, updated_at: new Date() })
+          .where('user_id', '=', user.userId)
+          .execute();
+      }
+      // Don't send a reply — Twilio sends its own STOP confirmation
+      return NextResponse.json({ status: 'opt_out' });
+    }
+
+    if (['HELP', 'INFO'].includes(normalized)) {
+      await sendSms(
+        from,
+        'Lloyd — your personal assistant. Text anything to chat. Reply STOP to opt out. For support, visit heylloyd.co or email support@heylloyd.co. Msg & data rates may apply.'
+      );
+      return NextResponse.json({ status: 'help' });
+    }
+
+    if (normalized === 'START') {
+      // Re-enable messaging after STOP
+      await sendSms(from, "Welcome back! You've been re-subscribed to Lloyd. Text anything to get started.");
+      return NextResponse.json({ status: 'opt_in' });
+    }
+
     // Rate limit: 10 messages per minute per phone number
     const rl = checkRateLimit(`sms:${from}`, 10, 60_000);
     if (!rl.allowed) {

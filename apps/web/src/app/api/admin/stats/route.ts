@@ -93,12 +93,63 @@ export async function GET(request: NextRequest) {
     // Table may not exist yet
   }
 
+  // Todo stats
+  let todoStats = { active: 0, completed: 0, total: 0 };
+  try {
+    const active = await db
+      .selectFrom('lloyd_todos')
+      .select(db.fn.count('id').as('count'))
+      .where('completed', '=', false)
+      .executeTakeFirstOrThrow();
+    const completed = await db
+      .selectFrom('lloyd_todos')
+      .select(db.fn.count('id').as('count'))
+      .where('completed', '=', true)
+      .executeTakeFirstOrThrow();
+    todoStats = {
+      active: Number(active.count),
+      completed: Number(completed.count),
+      total: Number(active.count) + Number(completed.count),
+    };
+  } catch {
+    // Table may not exist yet
+  }
+
+  // Schedule stats
+  let scheduleStats = { enabled: 0, dynamic: 0, total: 0 };
+  try {
+    const enabled = await db
+      .selectFrom('lloyd_recurring_schedules')
+      .select(db.fn.count('id').as('count'))
+      .where('enabled', '=', true)
+      .executeTakeFirstOrThrow();
+    const dynamic = await db
+      .selectFrom('lloyd_recurring_schedules')
+      .select(db.fn.count('id').as('count'))
+      .where('dynamic', '=', true)
+      .where('enabled', '=', true)
+      .executeTakeFirstOrThrow();
+    const total = await db
+      .selectFrom('lloyd_recurring_schedules')
+      .select(db.fn.count('id').as('count'))
+      .executeTakeFirstOrThrow();
+    scheduleStats = {
+      enabled: Number(enabled.count),
+      dynamic: Number(dynamic.count),
+      total: Number(total.count),
+    };
+  } catch {
+    // Table may not exist yet
+  }
+
   return NextResponse.json({
     totals: {
       users: Number(userCount.count),
       conversations: Number(conversationCount.count),
       memories: Number(memoryCount.count),
       reminders: reminderStats,
+      todos: todoStats,
+      schedules: scheduleStats,
     },
     recentUsers,
     recentConversations,

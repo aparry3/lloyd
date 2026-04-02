@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useState, useEffect, type FormEvent, type KeyboardEvent } from 'react';
 import Link from 'next/link';
 
 const LLOYD_PHONE = '+1 (855) 699-5176';
@@ -14,6 +14,45 @@ interface Account {
   preferredChannel: string;
   createdAt: string;
 }
+
+interface Todo {
+  id: string;
+  content: string;
+  category: string;
+  priority: number;
+  completed: boolean;
+  due_date: string | null;
+  created_at: string;
+}
+
+interface Reminder {
+  id: string;
+  content: string;
+  scheduled_at: string;
+  timezone: string;
+  status: string;
+}
+
+interface Schedule {
+  id: string;
+  description: string;
+  frequency: string;
+  time_of_day: string;
+  timezone: string;
+  days_of_week: number[] | null;
+  dynamic: boolean;
+  enabled: boolean;
+  next_scheduled: string | null;
+}
+
+interface Dashboard {
+  todos: Todo[];
+  reminders: Reminder[];
+  schedules: Schedule[];
+}
+
+const PRIORITY_LABELS = ['', '⚡ High', '🔴 Urgent'];
+const DAY_NAMES = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function EmailTag({
   email,
@@ -57,6 +96,9 @@ export default function AccountPage() {
   const [emailsToAdd, setEmailsToAdd] = useState<string[]>([]);
   const [emailsToRemove, setEmailsToRemove] = useState<string[]>([]);
 
+  // Dashboard
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+
   async function handleLookup(e: FormEvent) {
     e.preventDefault();
     if (!lookupEmail.trim()) return;
@@ -73,6 +115,8 @@ export default function AccountPage() {
         setEmailsToAdd([]);
         setEmailsToRemove([]);
         setStatus('found');
+        // Fetch dashboard data
+        fetchDashboard(data.email);
       } else if (res.status === 404) {
         setStatus('not-found');
         setMessage('No account found with that email.');
@@ -83,6 +127,17 @@ export default function AccountPage() {
     } catch {
       setStatus('error');
       setMessage('Network error — please try again.');
+    }
+  }
+
+  async function fetchDashboard(email: string) {
+    try {
+      const res = await fetch(`/api/account/dashboard?email=${encodeURIComponent(email)}`);
+      if (res.ok) {
+        setDashboard(await res.json());
+      }
+    } catch {
+      // Dashboard is non-critical
     }
   }
 
@@ -359,6 +414,144 @@ export default function AccountPage() {
             </div>
           </div>
         </div>
+
+        {/* Dashboard */}
+        {dashboard && (
+          <div className="space-y-4 mt-4">
+            {/* To-Do List */}
+            {dashboard.todos.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+                <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+                  ✅ To-Do List
+                  <span className="text-sm font-normal text-gray-400">
+                    {dashboard.todos.length} item{dashboard.todos.length !== 1 ? 's' : ''}
+                  </span>
+                </h2>
+                {(() => {
+                  const grouped: Record<string, Todo[]> = {};
+                  for (const t of dashboard.todos) {
+                    const cat = t.category || 'general';
+                    if (!grouped[cat]) grouped[cat] = [];
+                    grouped[cat].push(t);
+                  }
+                  return Object.entries(grouped).map(([cat, items]) => (
+                    <div key={cat} className="mb-3 last:mb-0">
+                      {Object.keys(grouped).length > 1 && (
+                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+                          {cat}
+                        </h3>
+                      )}
+                      <ul className="space-y-1.5">
+                        {items.map((todo) => (
+                          <li key={todo.id} className="flex items-start gap-2 text-sm">
+                            <span className="text-gray-300 mt-0.5">○</span>
+                            <span className="flex-1">
+                              {todo.priority > 0 && (
+                                <span className="text-xs mr-1">{PRIORITY_LABELS[todo.priority]}</span>
+                              )}
+                              {todo.content}
+                              {todo.due_date && (
+                                <span className="text-xs text-gray-400 ml-1.5">
+                                  due {new Date(todo.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </span>
+                              )}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ));
+                })()}
+              </div>
+            )}
+
+            {/* Upcoming Reminders */}
+            {dashboard.reminders.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+                <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+                  ⏰ Upcoming Reminders
+                  <span className="text-sm font-normal text-gray-400">
+                    {dashboard.reminders.length}
+                  </span>
+                </h2>
+                <ul className="space-y-2">
+                  {dashboard.reminders.map((r) => (
+                    <li key={r.id} className="flex items-start gap-2 text-sm">
+                      <span className="text-gray-300 mt-0.5">⏱</span>
+                      <span className="flex-1">
+                        {r.content}
+                        <span className="text-xs text-gray-400 ml-1.5">
+                          {new Date(r.scheduled_at).toLocaleString('en-US', {
+                            timeZone: r.timezone,
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Recurring Schedules */}
+            {dashboard.schedules.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+                <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+                  🔄 Recurring Schedules
+                  <span className="text-sm font-normal text-gray-400">
+                    {dashboard.schedules.length}
+                  </span>
+                </h2>
+                <ul className="space-y-2">
+                  {dashboard.schedules.map((s) => (
+                    <li key={s.id} className="text-sm">
+                      <div className="font-medium">
+                        {s.description}
+                        {s.dynamic && (
+                          <span className="text-xs bg-purple-50 text-purple-600 rounded-full px-1.5 py-0.5 ml-1.5">
+                            AI
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {s.frequency === 'daily' && `Every day at ${s.time_of_day.substring(0, 5)}`}
+                        {s.frequency === 'weekly' && (
+                          <>
+                            {s.days_of_week
+                              ? s.days_of_week.map((d) => DAY_NAMES[d]).join(', ')
+                              : 'Weekly'}{' '}
+                            at {s.time_of_day.substring(0, 5)}
+                          </>
+                        )}
+                        {s.frequency === 'monthly' && `Monthly at ${s.time_of_day.substring(0, 5)}`}
+                        {s.next_scheduled && (
+                          <> · Next: {new Date(s.next_scheduled).toLocaleString('en-US', {
+                            timeZone: s.timezone,
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}</>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {dashboard.todos.length === 0 && dashboard.reminders.length === 0 && dashboard.schedules.length === 0 && (
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 text-center text-sm text-gray-400">
+                No active todos, reminders, or schedules yet. Text Lloyd to get started!
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex justify-between items-center mt-6 text-xs text-gray-400">
           <Link href="/" className="text-blue-600 hover:underline">
