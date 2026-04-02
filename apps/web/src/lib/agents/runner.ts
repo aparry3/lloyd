@@ -3,6 +3,7 @@ import { PostgresStore } from '@agent-runner/store-postgres';
 import { saveMemory, recallMemories, updateMemory, forgetMemory, getMemoryContext } from './memory-tools';
 import { webSearch, getCurrentTime, calculate } from './utility-tools';
 import { setReminder, listReminders, cancelReminder } from './reminder-tools';
+import { setRecurringSchedule, listRecurringSchedules, cancelRecurringSchedule, updateRecurringSchedule } from './schedule-tools';
 
 let _runner: Runner | null = null;
 let _store: PostgresStore | null = null;
@@ -15,21 +16,37 @@ You have tools! Use them:
 - **web_search**: look things up when you need current info, facts, prices, hours, events
 - **calculate**: do math, tip splits, conversions — don't do arithmetic in your head
 - **get_current_time**: check the current date/time when relevant
-- **set_reminder**: set a reminder for a specific time. Always call get_current_time first so you know "now", then compute the ISO 8601 datetime.
-- **list_reminders** / **cancel_reminder**: manage existing reminders
+- **set_reminder**: set a one-off reminder for a specific time. Always call get_current_time first so you know "now", then compute the ISO 8601 datetime.
+- **list_reminders** / **cancel_reminder**: manage existing one-off reminders
+- **set_recurring_schedule**: create a recurring scheduled message (daily/weekly/monthly)
+- **list_recurring_schedules** / **cancel_recurring_schedule** / **update_recurring_schedule**: manage recurring schedules
 
 You can also help with:
 - Writing and editing text
 - Brainstorming and planning
 - General knowledge questions
 
-## Reminders
+## Reminders (One-Off)
 When users say "remind me to..." or "set a reminder for...":
 1. Call get_current_time to know the current date/time
 2. Parse their request into a specific datetime
 3. Call set_reminder with the ISO 8601 datetime
 4. Confirm with the date/time in human-readable format
 For relative times ("in 2 hours", "tomorrow morning"), calculate the actual datetime. "Morning" = 9am, "afternoon" = 2pm, "evening" = 6pm unless they specify.
+
+## Recurring Schedules
+When users want repeating/recurring messages ("every day at 6am", "weekly on Mondays", "on the 1st of every month"):
+- **set_recurring_schedule**: create a recurring message. Call get_current_time first to confirm timezone.
+  - frequency: 'daily', 'weekly', or 'monthly'
+  - time: 24-hour format like "06:00"
+  - daysOfWeek: for weekly, 1=Mon through 7=Sun (e.g., [1,3,5] for Mon/Wed/Fri)
+  - dayOfMonth: for monthly, 1-31
+  - content: the message to send. Can use {date}, {day_of_week}, {time} placeholders.
+- **list_recurring_schedules**: show user's active schedules
+- **cancel_recurring_schedule**: disable a schedule by description match
+- **update_recurring_schedule**: change time, content, frequency, or enable/disable
+
+Distinguish one-off ("remind me tomorrow at 9am") from recurring ("every morning at 9am"). Use set_reminder for one-off, set_recurring_schedule for recurring.
 
 ## Memory
 You have tools to save and recall facts about the user. Use them proactively:
@@ -62,7 +79,7 @@ export function getRunner(): Runner {
 
     _runner = createRunner({
       store: _store,
-      tools: [saveMemory, recallMemories, updateMemory, forgetMemory, webSearch, getCurrentTime, calculate, setReminder, listReminders, cancelReminder],
+      tools: [saveMemory, recallMemories, updateMemory, forgetMemory, webSearch, getCurrentTime, calculate, setReminder, listReminders, cancelReminder, setRecurringSchedule, listRecurringSchedules, cancelRecurringSchedule, updateRecurringSchedule],
       session: {
         maxMessages: 40,
         strategy: 'summary',
@@ -90,6 +107,10 @@ export function getRunner(): Runner {
           { type: 'inline', name: 'set_reminder' },
           { type: 'inline', name: 'list_reminders' },
           { type: 'inline', name: 'cancel_reminder' },
+          { type: 'inline', name: 'set_recurring_schedule' },
+          { type: 'inline', name: 'list_recurring_schedules' },
+          { type: 'inline', name: 'cancel_recurring_schedule' },
+          { type: 'inline', name: 'update_recurring_schedule' },
         ],
       })
     );

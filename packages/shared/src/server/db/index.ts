@@ -54,12 +54,31 @@ export interface LloydReminderTable {
   created_at: Generated<Date>;
 }
 
+export interface LloydRecurringScheduleTable {
+  id: Generated<string>;
+  user_id: string;
+  description: string;
+  content: string;
+  frequency: string;
+  time_of_day: string;         // TIME stored as string in Kysely
+  timezone: Generated<string>;
+  days_of_week: number[] | null;
+  day_of_month: number | null;
+  channel: string | null;
+  enabled: Generated<boolean>;
+  last_sent_at: Date | null;
+  next_scheduled: Date | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
 export interface Database {
   lloyd_users: LloydUserTable;
   lloyd_channel_identifiers: LloydChannelIdentifierTable;
   lloyd_conversations: LloydConversationTable;
   lloyd_user_memories: LloydUserMemoryTable;
   lloyd_reminders: LloydReminderTable;
+  lloyd_recurring_schedules: LloydRecurringScheduleTable;
 }
 
 let _db: Kysely<Database> | null = null;
