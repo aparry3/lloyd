@@ -189,7 +189,7 @@ const setScheduleInput = z.object({
   content: z.string().describe('Message content or instruction. For dynamic schedules, this is a prompt (e.g., "Generate a morning summary with my upcoming reminders and anything I should know today"). For static schedules, this is sent as-is (can include {date}, {day_of_week} placeholders).'),
   frequency: z.enum(['daily', 'weekly', 'monthly']).describe('How often to send'),
   time: z.string().describe('Time of day to send, in HH:MM 24-hour format (e.g., "06:00", "18:30")'),
-  timezone: z.string().default('America/New_York').describe("User's timezone"),
+  timezone: z.string().optional().describe("User's timezone — auto-detected from their profile if not specified"),
   daysOfWeek: z.array(z.number().min(1).max(7)).optional()
     .describe('For weekly: which days (1=Mon, 2=Tue, ..., 7=Sun). Defaults to every day of the week if not specified with weekly.'),
   dayOfMonth: z.number().min(1).max(31).optional()
@@ -208,6 +208,9 @@ export const setRecurringSchedule = defineTool({
     const userId = (ctx as any).userId;
     if (!userId) return { error: 'No user context' };
 
+    // Use user's profile timezone if not explicitly specified
+    const timezone = params.timezone || (ctx as any).timezone || 'America/New_York';
+
     // Validate time format
     if (!/^\d{1,2}:\d{2}$/.test(params.time)) {
       return { error: 'Invalid time format. Use HH:MM (e.g., "06:00").' };
@@ -223,7 +226,7 @@ export const setRecurringSchedule = defineTool({
     const nextTrigger = calculateNextTrigger(
       params.frequency,
       params.time,
-      params.timezone,
+      timezone,
       daysOfWeek,
       dayOfMonth,
     );
@@ -237,7 +240,7 @@ export const setRecurringSchedule = defineTool({
         content: params.content,
         frequency: params.frequency,
         time_of_day: params.time + ':00',
-        timezone: params.timezone,
+        timezone,
         days_of_week: daysOfWeek,
         day_of_month: dayOfMonth,
         channel: (ctx as any).channel || null,
@@ -253,7 +256,7 @@ export const setRecurringSchedule = defineTool({
       description: params.description,
       frequency: params.frequency,
       time: params.time,
-      timezone: params.timezone,
+      timezone,
       dynamic: params.dynamic,
       nextTrigger: result.next_scheduled,
     };

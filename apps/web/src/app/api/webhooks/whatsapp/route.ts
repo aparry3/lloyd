@@ -78,8 +78,9 @@ export async function POST(request: NextRequest) {
         userId: user.userId,
         userName: user.name,
         channel: 'whatsapp',
+        timezone: user.timezone,
       },
-      extraContext: `[Channel: WhatsApp]${memoryCtx || ''}`,
+      extraContext: `[Channel: WhatsApp] [Timezone: ${user.timezone}]${memoryCtx || ''}`,
     });
 
     // Reply via WhatsApp Cloud API

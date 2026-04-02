@@ -133,8 +133,9 @@ export async function POST(request: NextRequest) {
         userId: user.userId,
         userName: user.name,
         channel: 'sms',
+        timezone: user.timezone,
       },
-      extraContext: `[Channel: SMS]${memoryCtx || ''}`,
+      extraContext: `[Channel: SMS] [Timezone: ${user.timezone}]${memoryCtx || ''}`,
     });
 
     // Send the response back via SMS (split long messages)

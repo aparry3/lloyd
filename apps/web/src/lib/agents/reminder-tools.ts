@@ -11,8 +11,8 @@ const setReminderInput = z.object({
     ),
   timezone: z
     .string()
-    .default('America/New_York')
-    .describe("User's timezone (e.g., America/New_York, America/Los_Angeles)"),
+    .optional()
+    .describe("User's timezone — auto-detected from their profile if not specified"),
 });
 
 const listRemindersInput = z.object({
@@ -38,9 +38,10 @@ export const setReminder = defineTool({
     'Set a reminder for the user. They\'ll get a message at the specified time. Use get_current_time first to know "now", then calculate the right datetime. Support natural language like "tomorrow at 9am", "in 2 hours", "next Monday at noon".',
   input: setReminderInput as z.ZodSchema,
   async execute(input: unknown, ctx) {
-    const { content, scheduledAt, timezone } = input as z.infer<typeof setReminderInput>;
+    const { content, scheduledAt, timezone: inputTz } = input as z.infer<typeof setReminderInput>;
     const userId = (ctx as any).userId;
     if (!userId) return { error: 'No user context' };
+    const timezone = inputTz || (ctx as any).timezone || 'America/New_York';
 
     const scheduledDate = new Date(scheduledAt);
     if (isNaN(scheduledDate.getTime())) {

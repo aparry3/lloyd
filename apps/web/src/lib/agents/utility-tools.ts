@@ -8,8 +8,8 @@ const webSearchInput = z.object({
 const getCurrentTimeInput = z.object({
   timezone: z
     .string()
-    .default('America/New_York')
-    .describe('IANA timezone (e.g., America/New_York, Europe/London)'),
+    .optional()
+    .describe("IANA timezone — auto-detected from user's profile if not specified"),
 });
 
 /**
@@ -68,8 +68,9 @@ export const getCurrentTime = defineTool({
   description:
     'Get the current date and time. Use when the user asks what time/day it is, or when you need to know the current date for context.',
   input: getCurrentTimeInput as z.ZodSchema,
-  async execute(input: unknown) {
-    const { timezone } = input as z.infer<typeof getCurrentTimeInput>;
+  async execute(input: unknown, ctx) {
+    const { timezone: inputTz } = input as z.infer<typeof getCurrentTimeInput>;
+    const timezone = inputTz || (ctx as any)?.timezone || 'America/New_York';
 
     try {
       const now = new Date();

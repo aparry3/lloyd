@@ -12,8 +12,28 @@ interface Account {
   phone: string | null;
   emails: string[];
   preferredChannel: string;
+  timezone: string;
   createdAt: string;
 }
+
+const COMMON_TIMEZONES = [
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Phoenix',
+  'America/Los_Angeles',
+  'America/Anchorage',
+  'Pacific/Honolulu',
+  'America/Toronto',
+  'America/Vancouver',
+  'Europe/London',
+  'Europe/Paris',
+  'Europe/Berlin',
+  'Asia/Tokyo',
+  'Asia/Shanghai',
+  'Asia/Kolkata',
+  'Australia/Sydney',
+];
 
 interface Todo {
   id: string;
@@ -91,6 +111,7 @@ export default function AccountPage() {
   const [phone, setPhone] = useState('');
   const [emails, setEmails] = useState<string[]>([]);
   const [emailInput, setEmailInput] = useState('');
+  const [tz, setTz] = useState('America/New_York');
 
   // Track changes
   const [emailsToAdd, setEmailsToAdd] = useState<string[]>([]);
@@ -112,6 +133,7 @@ export default function AccountPage() {
         setName(data.name);
         setPhone(data.phone || '');
         setEmails(data.emails);
+        setTz(data.timezone || 'America/New_York');
         setEmailsToAdd([]);
         setEmailsToRemove([]);
         setStatus('found');
@@ -183,6 +205,7 @@ export default function AccountPage() {
     account &&
     (name !== account.name ||
       phone !== (account.phone || '') ||
+      tz !== (account.timezone || 'America/New_York') ||
       emailsToAdd.length > 0 ||
       emailsToRemove.length > 0);
 
@@ -199,6 +222,7 @@ export default function AccountPage() {
           userId: account.id,
           name: name !== account.name ? name : undefined,
           phone: phone !== (account.phone || '') ? (phone || null) : undefined,
+          timezone: tz !== (account.timezone || 'America/New_York') ? tz : undefined,
           addEmails: emailsToAdd.length > 0 ? emailsToAdd : undefined,
           removeEmails: emailsToRemove.length > 0 ? emailsToRemove : undefined,
         }),
@@ -213,6 +237,7 @@ export default function AccountPage() {
           setEmails(data.emails);
           setPhone(data.phone || '');
           setName(data.name);
+          setTz(data.timezone || 'America/New_York');
           setEmailsToAdd([]);
           setEmailsToRemove([]);
         }
@@ -335,6 +360,27 @@ export default function AccountPage() {
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
                 placeholder="+1 (555) 123-4567"
               />
+            </div>
+
+            <div>
+              <label htmlFor="timezone" className="block text-sm font-medium text-gray-700 mb-1.5">
+                Timezone <span className="text-gray-300 font-normal">— for reminders &amp; schedules</span>
+              </label>
+              <select
+                id="timezone"
+                value={tz}
+                onChange={(e) => setTz(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow bg-white"
+              >
+                {COMMON_TIMEZONES.map((t) => (
+                  <option key={t} value={t}>
+                    {t.replace(/_/g, ' ').replace('America/', '').replace('Europe/', 'Europe: ').replace('Asia/', 'Asia: ').replace('Pacific/', 'Pacific: ').replace('Australia/', 'Australia: ')}
+                  </option>
+                ))}
+                {!COMMON_TIMEZONES.includes(tz) && (
+                  <option value={tz}>{tz}</option>
+                )}
+              </select>
             </div>
 
             <div>

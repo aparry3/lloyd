@@ -56,8 +56,9 @@ export async function POST(request: NextRequest) {
         userId: user.userId,
         userName: user.name,
         channel: 'email',
+        timezone: user.timezone,
       },
-      extraContext: `[Channel: Email]${memoryCtx || ''}`,
+      extraContext: `[Channel: Email] [Timezone: ${user.timezone}]${memoryCtx || ''}`,
     });
 
     // Reply via SendGrid

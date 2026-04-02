@@ -4,6 +4,7 @@ import { normalizePhone } from '@lloyd/shared';
 import { randomUUID } from 'crypto';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sendWelcomeMessage } from '@/lib/messaging/welcome';
+import { guessTimezoneFromPhone } from '@/lib/timezone';
 
 /**
  * POST /api/signup
@@ -49,6 +50,9 @@ export async function POST(request: NextRequest) {
     const userId = randomUUID();
     const normalizedPhone = phone ? normalizePhone(phone) : null;
 
+    // Auto-detect timezone from phone area code (best effort)
+    const detectedTz = normalizedPhone ? guessTimezoneFromPhone(normalizedPhone) : null;
+
     // Create the user
     await db
       .insertInto('lloyd_users')
@@ -58,6 +62,7 @@ export async function POST(request: NextRequest) {
         email: email.toLowerCase(),
         phone: normalizedPhone,
         preferred_channel: normalizedPhone ? 'sms' : 'email',
+        timezone: detectedTz || 'America/New_York',
         ar_agent_id: 'lloyd-assistant',
       })
       .execute();

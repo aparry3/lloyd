@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@lloyd/shared/server';
 import { normalizePhone } from '@lloyd/shared';
 import { randomUUID } from 'crypto';
+import { isValidTimezone } from '@/lib/timezone';
 
 /**
  * GET /api/account?email=xxx or ?phone=xxx
@@ -71,6 +72,7 @@ export async function GET(request: NextRequest) {
       phone: user.phone,
       emails,
       preferredChannel: user.preferred_channel,
+      timezone: user.timezone || 'America/New_York',
       createdAt: user.created_at,
     });
   } catch (error) {
@@ -87,10 +89,11 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, name, phone, addEmails, removeEmails } = body as {
+    const { userId, name, phone, timezone, addEmails, removeEmails } = body as {
       userId: string;
       name?: string;
       phone?: string | null;
+      timezone?: string;
       addEmails?: string[];
       removeEmails?: string[];
     };
@@ -115,6 +118,12 @@ export async function PUT(request: NextRequest) {
     // Update user fields
     const updates: Record<string, unknown> = { updated_at: new Date() };
     if (name) updates.name = name;
+    if (timezone) {
+      if (!isValidTimezone(timezone)) {
+        return NextResponse.json({ error: 'Invalid timezone' }, { status: 400 });
+      }
+      updates.timezone = timezone;
+    }
     if (phone !== undefined) {
       updates.phone = phone ? normalizePhone(phone) : null;
       if (!phone) {

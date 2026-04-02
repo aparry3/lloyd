@@ -9,6 +9,7 @@ export interface LloydUserTable {
   email: string;
   phone: string | null;
   preferred_channel: string;
+  timezone: Generated<string>;
   ar_agent_id: string;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;

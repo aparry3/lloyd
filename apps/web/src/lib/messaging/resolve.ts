@@ -11,6 +11,7 @@ export interface ResolvedUser {
   arSessionId: string;
   conversationId: string;
   channel: Channel;
+  timezone: string;
 }
 
 /**
@@ -40,6 +41,7 @@ export async function resolveUser(
       'lloyd_users.id as userId',
       'lloyd_users.name',
       'lloyd_users.ar_agent_id as arAgentId',
+      'lloyd_users.timezone',
     ])
     .where('lloyd_channel_identifiers.channel', '=', channel)
     .where('lloyd_channel_identifiers.identifier', '=', identifier)
@@ -95,5 +97,6 @@ export async function resolveUser(
     arSessionId,
     conversationId: conversation.id,
     channel,
+    timezone: ci.timezone || 'America/New_York',
   };
 }
