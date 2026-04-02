@@ -65,6 +65,7 @@ export interface LloydRecurringScheduleTable {
   days_of_week: number[] | null;
   day_of_month: number | null;
   channel: string | null;
+  dynamic: Generated<boolean>;
   enabled: Generated<boolean>;
   last_sent_at: Date | null;
   next_scheduled: Date | null;

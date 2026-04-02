@@ -4,6 +4,7 @@ import { sendSms } from '@/lib/messaging/twilio';
 import { sendEmail } from '@/lib/messaging/email';
 import { sendWhatsApp } from '@/lib/messaging/whatsapp';
 import { calculateNextTrigger } from '@/lib/agents/schedule-tools';
+import { generateDynamicContent } from '@/lib/agents/generate-schedule-content';
 
 /**
  * GET /api/cron/reminders
@@ -98,11 +99,13 @@ export async function GET(request: NextRequest) {
           'lloyd_recurring_schedules.days_of_week',
           'lloyd_recurring_schedules.day_of_month',
           'lloyd_recurring_schedules.channel as scheduleChannel',
+          'lloyd_recurring_schedules.dynamic',
           'lloyd_recurring_schedules.user_id',
           'lloyd_users.name',
           'lloyd_users.phone',
           'lloyd_users.email',
           'lloyd_users.preferred_channel',
+          'lloyd_users.ar_agent_id as arAgentId',
         ])
         .where('lloyd_recurring_schedules.enabled', '=', true)
         .where('lloyd_recurring_schedules.next_scheduled', '<=', new Date())
@@ -110,26 +113,41 @@ export async function GET(request: NextRequest) {
         .execute();
 
       for (const schedule of dueSchedules) {
-        // Render content with placeholders
         const now = new Date();
-        const dateStr = now.toLocaleDateString('en-US', {
-          timeZone: schedule.timezone,
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        });
-        const dayOfWeek = now.toLocaleDateString('en-US', {
-          timeZone: schedule.timezone,
-          weekday: 'long',
-        });
-
-        const message = schedule.content
-          .replace(/\{date\}/g, dateStr)
-          .replace(/\{day_of_week\}/g, dayOfWeek)
-          .replace(/\{time\}/g, now.toLocaleTimeString('en-US', { timeZone: schedule.timezone }));
-
         const channel = schedule.scheduleChannel || schedule.preferred_channel;
+
+        let message: string;
+
+        if (schedule.dynamic) {
+          // Dynamic: use Lloyd to generate personalized content
+          message = await generateDynamicContent({
+            userId: schedule.user_id,
+            userName: schedule.name || 'there',
+            arAgentId: schedule.arAgentId,
+            content: schedule.content,
+            description: schedule.description,
+            timezone: schedule.timezone,
+            channel: channel || 'sms',
+          });
+        } else {
+          // Static: render content with placeholders
+          const dateStr = now.toLocaleDateString('en-US', {
+            timeZone: schedule.timezone,
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          });
+          const dayOfWeek = now.toLocaleDateString('en-US', {
+            timeZone: schedule.timezone,
+            weekday: 'long',
+          });
+
+          message = schedule.content
+            .replace(/\{date\}/g, dateStr)
+            .replace(/\{day_of_week\}/g, dayOfWeek)
+            .replace(/\{time\}/g, now.toLocaleTimeString('en-US', { timeZone: schedule.timezone }));
+        }
 
         try {
           if (channel === 'sms' && schedule.phone) {

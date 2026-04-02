@@ -158,7 +158,7 @@ export { calculateNextTrigger };
 
 const setScheduleInput = z.object({
   description: z.string().describe('What this recurring message is for (e.g., "daily morning summary")'),
-  content: z.string().describe('Message content or instruction. Can include {date}, {day_of_week} placeholders.'),
+  content: z.string().describe('Message content or instruction. For dynamic schedules, this is a prompt (e.g., "Generate a morning summary with my upcoming reminders and anything I should know today"). For static schedules, this is sent as-is (can include {date}, {day_of_week} placeholders).'),
   frequency: z.enum(['daily', 'weekly', 'monthly']).describe('How often to send'),
   time: z.string().describe('Time of day to send, in HH:MM 24-hour format (e.g., "06:00", "18:30")'),
   timezone: z.string().default('America/New_York').describe("User's timezone"),
@@ -166,6 +166,8 @@ const setScheduleInput = z.object({
     .describe('For weekly: which days (1=Mon, 2=Tue, ..., 7=Sun). Defaults to every day of the week if not specified with weekly.'),
   dayOfMonth: z.number().min(1).max(31).optional()
     .describe('For monthly: which day of the month (1-31)'),
+  dynamic: z.boolean().default(false)
+    .describe('If true, Lloyd generates personalized content each time using the content as a prompt. If false (default), content is sent as-is with placeholder substitution. Use dynamic=true for summaries, briefings, or personalized messages.'),
 });
 
 export const setRecurringSchedule = defineTool({
@@ -211,6 +213,7 @@ export const setRecurringSchedule = defineTool({
         days_of_week: daysOfWeek,
         day_of_month: dayOfMonth,
         channel: (ctx as any).channel || null,
+        dynamic: params.dynamic,
         next_scheduled: nextTrigger,
       })
       .returning(['id', 'next_scheduled'])
@@ -223,6 +226,7 @@ export const setRecurringSchedule = defineTool({
       frequency: params.frequency,
       time: params.time,
       timezone: params.timezone,
+      dynamic: params.dynamic,
       nextTrigger: result.next_scheduled,
     };
   },
@@ -248,7 +252,7 @@ export const listRecurringSchedules = defineTool({
       .select([
         'id', 'description', 'content', 'frequency',
         'time_of_day', 'timezone', 'days_of_week', 'day_of_month',
-        'enabled', 'next_scheduled', 'last_sent_at', 'created_at',
+        'dynamic', 'enabled', 'next_scheduled', 'last_sent_at', 'created_at',
       ])
       .where('user_id', '=', userId)
       .orderBy('created_at', 'asc');
@@ -296,6 +300,7 @@ const updateScheduleInput = z.object({
   newFrequency: z.enum(['daily', 'weekly', 'monthly']).optional(),
   newDaysOfWeek: z.array(z.number().min(1).max(7)).optional(),
   newDayOfMonth: z.number().min(1).max(31).optional(),
+  dynamic: z.boolean().optional().describe('Toggle dynamic content generation on/off'),
 });
 
 export const updateRecurringSchedule = defineTool({
@@ -329,6 +334,7 @@ export const updateRecurringSchedule = defineTool({
     if (params.newFrequency) updates.frequency = params.newFrequency;
     if (params.newDaysOfWeek) updates.days_of_week = params.newDaysOfWeek;
     if (params.newDayOfMonth !== undefined) updates.day_of_month = params.newDayOfMonth;
+    if (params.dynamic !== undefined) updates.dynamic = params.dynamic;
 
     // Recalculate next trigger if time or frequency changed
     const freq = params.newFrequency ?? schedule.frequency;
