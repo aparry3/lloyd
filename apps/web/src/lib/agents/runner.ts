@@ -5,6 +5,7 @@ import { webSearch, getCurrentTime, calculate } from './utility-tools';
 import { setReminder, listReminders, cancelReminder } from './reminder-tools';
 import { setRecurringSchedule, listRecurringSchedules, cancelRecurringSchedule, updateRecurringSchedule } from './schedule-tools';
 import { addTodo, listTodos, completeTodo, removeTodo, clearTodos } from './todo-tools';
+import { getWeather } from './weather-tools';
 
 let _runner: Runner | null = null;
 let _store: PostgresStore | null = null;
@@ -23,6 +24,7 @@ You have tools! Use them:
 - **list_recurring_schedules** / **cancel_recurring_schedule** / **update_recurring_schedule**: manage recurring schedules
 - **add_todo**: add items to the user's to-do list (supports categories and priorities)
 - **list_todos** / **complete_todo** / **remove_todo** / **clear_todos**: manage their to-do list
+- **get_weather**: current weather + 3-day forecast for any location (no API key needed)
 
 You can also help with:
 - Writing and editing text
@@ -96,7 +98,7 @@ export function getRunner(): Runner {
 
     _runner = createRunner({
       store: _store,
-      tools: [saveMemory, recallMemories, updateMemory, forgetMemory, webSearch, getCurrentTime, calculate, setReminder, listReminders, cancelReminder, setRecurringSchedule, listRecurringSchedules, cancelRecurringSchedule, updateRecurringSchedule, addTodo, listTodos, completeTodo, removeTodo, clearTodos],
+      tools: [saveMemory, recallMemories, updateMemory, forgetMemory, webSearch, getCurrentTime, calculate, setReminder, listReminders, cancelReminder, setRecurringSchedule, listRecurringSchedules, cancelRecurringSchedule, updateRecurringSchedule, addTodo, listTodos, completeTodo, removeTodo, clearTodos, getWeather],
       session: {
         maxMessages: 40,
         strategy: 'summary',
@@ -133,6 +135,7 @@ export function getRunner(): Runner {
           { type: 'inline', name: 'complete_todo' },
           { type: 'inline', name: 'remove_todo' },
           { type: 'inline', name: 'clear_todos' },
+          { type: 'inline', name: 'get_weather' },
         ],
       })
     );
