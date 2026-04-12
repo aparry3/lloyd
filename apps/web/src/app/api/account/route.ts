@@ -124,11 +124,12 @@ export async function PUT(request: NextRequest) {
       }
       updates.timezone = timezone;
     }
+
+    let normalizedPhone: string | null = null;
     if (phone !== undefined) {
-      updates.phone = phone ? normalizePhone(phone) : null;
-      if (!phone) {
-        updates.preferred_channel = 'email';
-      }
+      normalizedPhone = phone ? normalizePhone(phone) : null;
+      updates.phone = normalizedPhone;
+      updates.preferred_channel = normalizedPhone ? 'sms' : 'email';
     }
 
     await db
@@ -213,8 +214,7 @@ export async function PUT(request: NextRequest) {
         .execute();
 
       // Add new ones if phone is set
-      if (phone) {
-        const normalizedPhone = normalizePhone(phone);
+      if (normalizedPhone) {
         await db
           .insertInto('lloyd_channel_identifiers')
           .values([
